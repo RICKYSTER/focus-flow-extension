@@ -1,6 +1,6 @@
 # 🎯 FocusFlow Extension
 
-A personal browser extension to limit distractions, enforce focused YouTube watching, and build better online habits — built gradually during NEET prep.
+A personal browser extension to limit distractions, enforce focused YouTube watching, and build better online habits — built gradually during exam prep.
 
 ## 🌟 Core Features
 
