@@ -12,7 +12,7 @@ A personal browser extension to limit distractions, enforce focused YouTube watc
 
 ## 🚧 Status: Design & Planning Phase
 
-I'm currently preparing for NEET, so this project will grow slowly. Right now, it's a space for design ideas and reflection, with a goal to build the extension later using open-source tools and help.
+I'm currently preparing for exams, so this project will grow slowly. Right now, it's a space for design ideas and reflection, with a goal to build the extension later using open-source tools and help.
 
 ## 🧠 Why I'm Making This
 
