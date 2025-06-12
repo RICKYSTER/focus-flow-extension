@@ -1,0 +1,28 @@
+{
+  "manifest_version": 3,
+  "name": "FocusFlow",
+  "version": "1.0",
+  "description": "A browser extension to help users stay focused and avoid distractions.",
+  "permissions": [
+    "tabs",
+    "storage",
+    "scripting"
+  ],
+  "action": {
+    "default_popup": "src/popup.html"
+  },
+  "background": {
+    "service_worker": "src/background.js"
+  },
+  "content_scripts": [
+    {
+      "matches": ["<all_urls>"],
+      "js": ["src/content.js"]
+    }
+  ],
+  "host_permissions": ["<all_urls>"],
+  "icons": {
+    "48": "icon48.png",
+    "128": "icon128.png"
+  }
+}
