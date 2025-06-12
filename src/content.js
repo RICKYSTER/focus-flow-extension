@@ -1,6 +1,7 @@
 // Injected into sites for popups
 console.log("FocusFlow content script running on", window.location.hostname);
 
+// Will have to inject popup triggers or overlays here
 (async () => {
   const currentDomain = window.location.hostname;
 
@@ -106,10 +107,65 @@ function askUserToEnableFocus(domain) {
     }, 4500); // Total 1.5s delay + 3s show = 4.5s
   };
 
-  document.getElementById("ff-yes").onclick = () => {
-    saveFocusPreference(domain, true);
-    closeWithDelayedMessage(randomFrom(yesResponses));
-  };
+document.getElementById("ff-yes").onclick = () => {
+  saveFocusPreference(domain, true);
+  closeWithDelayedMessage(randomFrom(yesResponses));
+
+  setTimeout(() => {
+    askTimeLimit(domain);
+  }, 5000); // Wait until message disappears (1.5s + 3s = 4.5s), use 5s for safety
+};
+
+function askTimeLimit(domain) {
+  const minutes = prompt(`⏳ How many minutes would you like to stay focused on ${domain}?`);
+  const timeLimit = parseInt(minutes);
+
+  if (!isNaN(timeLimit) && timeLimit > 0) {
+    chrome.storage.sync.set({ [`limit_${domain}`]: timeLimit }, () => {
+      console.log(`⏱️ Limit of ${timeLimit} minutes set for ${domain}`);
+      startTimer(domain, timeLimit);
+    });
+  } else {
+    alert("⚠️ Please enter a valid number.");
+  }
+}
+ function startTimer(domain, limitMinutes) {
+  const startTime = Date.now();
+
+  const checkInterval = setInterval(() => {
+    const now = Date.now();
+    const elapsedMinutes = (now - startTime) / (1000 * 60);
+
+    if (elapsedMinutes >= limitMinutes) {
+      clearInterval(checkInterval);
+      triggerGracePeriod(domain);
+    }
+  }, 10000); // check every 10s
+}
+
+function triggerGracePeriod(domain) {
+  const banner = document.createElement("div");
+  banner.innerText = `🛎️ Time’s up on ${domain}. You have 5 more minutes to wrap up.`;
+
+  Object.assign(banner.style, {
+    position: 'fixed',
+    bottom: '20px',
+    left: '50%',
+    transform: 'translateX(-50%)',
+    background: '#ffeb3b',
+    color: '#333',
+    padding: '12px 20px',
+    borderRadius: '8px',
+    boxShadow: '0 4px 10px rgba(0,0,0,0.3)',
+    fontSize: '14px',
+    fontWeight: '500',
+    zIndex: 9999,
+  });
+
+  document.body.appendChild(banner);
+
+  chrome.runtime.sendMessage({ action: "closeTabAfter", minutes: 5 });
+}
 
   document.getElementById("ff-no").onclick = () => {
     saveFocusPreference(domain, false);
