@@ -8,6 +8,7 @@
     "storage",
     "scripting"
   ],
+  "host_permissions": ["<all_urls>"],
   "action": {
     "default_popup": "src/popup.html"
   },
@@ -19,6 +20,5 @@
       "matches": ["<all_urls>"],
       "js": ["src/content.js"]
     }
-  ],
-  "host_permissions": ["<all_urls>"]
+  ]
 }
