@@ -1,1 +1,1 @@
-//Injected into sites for popups
+// Injected into sites for popups
