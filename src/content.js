@@ -1,22 +1,31 @@
 // Injected into sites for popups
-console.log("FocusFlow content script running on", window.location.hostname);
+(() => {
+  console.log("FocusFlow content script running on", window.location.hostname);
 
-// Will have to inject popup triggers or overlays here
-(async () => {
-  const currentDomain = window.location.hostname;
+  // Skip if running inside an iframe to prevent double execution or UI issues
+  if (window.top !== window.self) {
+    console.warn("🪞 Skipping FocusFlow logic inside iframe.");
+    return;
+  }
 
-  chrome.storage.local.get(["trackedSites"], (data) => {
-    const trackedSites = data.trackedSites || {};
+  // Wait for full page load before injecting the UI
+  window.addEventListener("load", () => {
+    const currentDomain = window.location.hostname;
 
-    if (!(currentDomain in trackedSites)) {
-      askUserToEnableFocus(currentDomain);
-    }
+    chrome.storage.local.get(["trackedSites"], (data) => {
+      const trackedSites = data.trackedSites || {};
+      if (!(currentDomain in trackedSites)) {
+        askUserToEnableFocus(currentDomain);
+      }
+    });
   });
 })();
 
+// Show initial banner asking user if they want to enable FocusFlow for this domain
 function askUserToEnableFocus(domain) {
   const wrapper = document.createElement("div");
 
+  // Response messages to keep it cinematic and mentor-like
   const yesResponses = [
     "🧭 Alright. Let's do our best.",
     "🎯 Focus sharpens the mind. Let's begin.",
@@ -83,16 +92,14 @@ function askUserToEnableFocus(domain) {
 
   const banner = document.getElementById("ff-banner");
 
-  // Animate it in
+  // Slide in the banner smoothly
   setTimeout(() => {
-    if (banner) {
-      banner.style.top = "20px";
-      banner.style.opacity = "1";
-    }
+    banner.style.top = "20px";
+    banner.style.opacity = "1";
   }, 100);
 
+  // Fade out and replace with message before removing
   const closeWithDelayedMessage = (msg) => {
-    // Slide down and fade
     banner.style.top = "100px";
     banner.style.opacity = "0";
 
@@ -100,22 +107,33 @@ function askUserToEnableFocus(domain) {
       banner.innerHTML = `<div style="padding: 16px 0; font-size: 14px;">${msg}</div>`;
       banner.style.top = "20px";
       banner.style.opacity = "1";
-    }, 1500); // Show message after 1.5s
 
-    setTimeout(() => {
-      wrapper.remove();
-    }, 4500); // Total 1.5s delay + 3s show = 4.5s
+      // Auto-remove after 3 seconds
+      setTimeout(() => {
+        wrapper.remove();
+      }, 3000);
+    }, 600);
   };
 
-document.getElementById("ff-yes").onclick = () => {
-  saveFocusPreference(domain, true);
-  closeWithDelayedMessage(randomFrom(yesResponses));
+  // YES: Save focus preference and ask time limit
+  document.getElementById("ff-yes").onclick = () => {
+    saveFocusPreference(domain, true);
+    closeWithDelayedMessage(randomFrom(yesResponses));
 
-  setTimeout(() => {
-    askTimeLimit(domain);
-  }, 5000); // Wait until message disappears (1.5s + 3s = 4.5s), use 5s for safety
-};
+    // Ask for time limit after short delay
+    setTimeout(() => {
+      askTimeLimit(domain);
+    }, 4000);
+  };
 
+  // NO: Just dismiss and remember the domain
+  document.getElementById("ff-no").onclick = () => {
+    saveFocusPreference(domain, false);
+    closeWithDelayedMessage(randomFrom(noResponses));
+  };
+}
+
+// Ask user how long they want to focus
 function askTimeLimit(domain) {
   const minutes = prompt(`⏳ How many minutes would you like to stay focused on ${domain}?`);
   const timeLimit = parseInt(minutes);
@@ -129,7 +147,9 @@ function askTimeLimit(domain) {
     alert("⚠️ Please enter a valid number.");
   }
 }
- function startTimer(domain, limitMinutes) {
+
+// Timer that checks if time has elapsed, then triggers grace period
+function startTimer(domain, limitMinutes) {
   const startTime = Date.now();
 
   const checkInterval = setInterval(() => {
@@ -140,39 +160,115 @@ function askTimeLimit(domain) {
       clearInterval(checkInterval);
       triggerGracePeriod(domain);
     }
-  }, 10000); // check every 10s
+  }, 10000); // check every 10 seconds
 }
 
+// Grace period of 5 minutes after focus time ends
 function triggerGracePeriod(domain) {
   const banner = document.createElement("div");
-  banner.innerText = `🛎️ Time’s up on ${domain}. You have 5 more minutes to wrap up.`;
+  banner.innerText = `🛎️ Time’s up on ${domain}. You now have 5 minutes to wrap up.`;
 
   Object.assign(banner.style, {
     position: 'fixed',
     bottom: '20px',
     left: '50%',
     transform: 'translateX(-50%)',
-    background: '#ffeb3b',
+    background: '#fff176',
     color: '#333',
-    padding: '12px 20px',
-    borderRadius: '8px',
-    boxShadow: '0 4px 10px rgba(0,0,0,0.3)',
-    fontSize: '14px',
+    padding: '14px 22px',
+    borderRadius: '12px',
+    fontSize: '15px',
     fontWeight: '500',
+    fontFamily: 'Segoe UI, sans-serif',
+    boxShadow: '0 4px 12px rgba(0,0,0,0.25)',
     zIndex: 9999,
+    animation: 'blinkYellow 0.8s infinite alternate',
   });
 
+  const style = document.createElement('style');
+  style.textContent = `
+    @keyframes blinkYellow {
+      0% { opacity: 1; }
+      100% { opacity: 0.5; }
+    }
+    @keyframes blinkRedText {
+      0% { opacity: 1; transform: scale(1); }
+      100% { opacity: 0.4; transform: scale(1.2); }
+    }
+  `;
+  document.head.appendChild(style);
   document.body.appendChild(banner);
 
-  chrome.runtime.sendMessage({ action: "closeTabAfter", minutes: 5 });
+  // Auto remove banner
+  setTimeout(() => banner.remove(), 5000);
+
+  // Start final countdown after grace period
+  setTimeout(() => {
+    startFinalCountdown(domain);
+  }, 5 * 60 * 1000); // 5 minutes
 }
 
-  document.getElementById("ff-no").onclick = () => {
-    saveFocusPreference(domain, false);
-    closeWithDelayedMessage(randomFrom(noResponses));
-  };
+// Final 5-second countdown before tab close
+function startFinalCountdown(domain) {
+  const countdownDiv = document.createElement("div");
+  countdownDiv.innerText = "5";
+
+  Object.assign(countdownDiv.style, {
+    position: 'fixed',
+    top: '20px',
+    right: '20px',
+    fontSize: '64px',
+    fontWeight: 'bold',
+    color: '#ff4444',
+    fontFamily: 'Segoe UI, sans-serif',
+    zIndex: 10000,
+    animation: 'blinkRedText 0.7s infinite alternate',
+    textShadow: '2px 2px 8px rgba(0,0,0,0.5)',
+    background: 'transparent'
+  });
+
+  document.body.appendChild(countdownDiv);
+
+  let counter = 5;
+  const interval = setInterval(() => {
+    counter--;
+    if (counter > 0) {
+      countdownDiv.innerText = counter;
+    } else {
+      clearInterval(interval);
+      countdownDiv.remove();
+
+      captureVideoContext();
+
+      // Ask background script to close tab
+      try {
+        if (chrome.runtime?.id) {
+          chrome.runtime.sendMessage({ action: "forceCloseTab" });
+        }
+      } catch (err) {
+        console.warn("⚠️ Could not send force close message:", err);
+      }
+    }
+  }, 1000);
 }
 
+// Save video playback context (for YouTube rules later)
+function captureVideoContext() {
+  const video = document.querySelector('video');
+  const title = document.title;
+  const currentTime = video?.currentTime || 0;
+
+  chrome.storage.local.set({
+    ff_lastClosed: {
+      title,
+      url: location.href,
+      time: currentTime,
+      timestamp: Date.now()
+    }
+  });
+}
+
+// Save user's domain preference for FocusFlow
 function saveFocusPreference(domain, enabled) {
   chrome.storage.local.get(["trackedSites"], (data) => {
     const trackedSites = data.trackedSites || {};
